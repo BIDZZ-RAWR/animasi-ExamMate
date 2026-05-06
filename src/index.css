@@ -1,0 +1,14 @@
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-sage: #A3B18A;
+  --color-mustard: #E9C46A;
+  --color-terracotta: #E76F51;
+  --font-serif: "Newsreader", ui-serif, Georgia, serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  @apply font-sans bg-slate-50 text-slate-800;
+}
