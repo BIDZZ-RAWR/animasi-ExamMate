@@ -25,6 +25,9 @@ const INJECTED_STYLES = `
   .btn-modern-light { transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1); background: linear-gradient(180deg, #FFFFFF 0%, #F1F5F9 100%); color: #0F172A; box-shadow: 0 0 0 1px rgba(0,0,0,0.05), 0 2px 4px rgba(0,0,0,0.1), 0 12px 24px -4px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,1), inset 0 -3px 6px rgba(0,0,0,0.06); }
   .btn-modern-light:hover { transform: translateY(-3px); box-shadow: 0 0 0 1px rgba(0,0,0,0.05), 0 6px 12px -2px rgba(0,0,0,0.15), 0 20px 32px -6px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,1), inset 0 -3px 6px rgba(0,0,0,0.06); }
   .no-border-shadow { box-shadow: 0 8px 30px -4px rgba(0, 0, 0, 0.05); }
+  .gpu-smooth { transform: translateZ(0); backface-visibility: hidden; will-change: transform, opacity; }
+  .mockup-content-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+  .mockup-content-scroll::-webkit-scrollbar { display: none; }
 `;
 
 export interface CinematicHeroProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -55,6 +58,11 @@ export function CinematicHero({
   const requestRef = useRef<number>(0);
 
   useEffect(() => {
+    const isTouchDevice =
+      ScrollTrigger.isTouch === 1 ||
+      window.matchMedia("(pointer: coarse)").matches;
+    if (isTouchDevice) return;
+
     const handleMouseMove = (e: MouseEvent) => {
       if (window.scrollY > window.innerHeight * 2) return;
       cancelAnimationFrame(requestRef.current);
@@ -67,7 +75,14 @@ export function CinematicHero({
           mainCardRef.current.style.setProperty("--mouse-y", `${mouseY}px`);
           const xVal = (e.clientX / window.innerWidth - 0.5) * 2;
           const yVal = (e.clientY / window.innerHeight - 0.5) * 2;
-          gsap.to(mockupRef.current, { rotationY: xVal * 12, rotationX: -yVal * 12, ease: "power3.out", duration: 1.2 });
+          gsap.to(mockupRef.current, {
+            rotationY: xVal * 10,
+            rotationX: -yVal * 10,
+            ease: "power2.out",
+            duration: 0.65,
+            overwrite: "auto",
+            force3D: true,
+          });
         }
       });
     };
@@ -76,33 +91,156 @@ export function CinematicHero({
   },[]);
 
   useEffect(() => {
-    const isMobile = window.innerWidth < 768;
+    const isMobile = window.matchMedia("(max-width: 767px)").matches;
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const scrubValue = prefersReducedMotion ? false : isMobile ? 0.45 : 0.85;
+    const scrollDistance = isMobile ? "+=3600" : "+=5000";
+
+    ScrollTrigger.config({
+      ignoreMobileResize: true,
+      autoRefreshEvents: "DOMContentLoaded,load,visibilitychange",
+    });
+
+    if (isMobile && !prefersReducedMotion) {
+      ScrollTrigger.normalizeScroll(true);
+    }
+
     const ctx = gsap.context(() => {
-      gsap.set(".text-track", { autoAlpha: 0, y: 60, scale: 0.85, filter: "blur(20px)", rotationX: -20 });
+      gsap.set(".text-track", {
+        autoAlpha: 0,
+        y: isMobile ? 32 : 60,
+        scale: isMobile ? 0.92 : 0.85,
+        filter: isMobile ? "blur(8px)" : "blur(20px)",
+        rotationX: isMobile ? -8 : -20,
+        force3D: true,
+      });
       gsap.set(".text-days", { autoAlpha: 1, clipPath: "inset(0 100% 0 0)" });
-      gsap.set(".main-card", { y: window.innerHeight + 200, autoAlpha: 1 });
-      gsap.set([".card-left-text", ".card-right-text", ".mockup-scroll-wrapper"], { autoAlpha: 0 });
-      gsap.set(".cta-wrapper", { autoAlpha: 0, scale: 0.8, filter: "blur(30px)" });
+      gsap.set(".main-card", {
+        y: window.innerHeight + (isMobile ? 120 : 200),
+        autoAlpha: 1,
+        force3D: true,
+      });
+      gsap.set([".card-left-text", ".card-right-text", ".mockup-scroll-wrapper"], {
+        autoAlpha: 0,
+        force3D: true,
+      });
+      gsap.set(".cta-wrapper", {
+        autoAlpha: 0,
+        scale: 0.85,
+        filter: isMobile ? "blur(10px)" : "blur(30px)",
+        force3D: true,
+      });
 
       const introTl = gsap.timeline({ delay: 0.3 });
-      introTl.to(".text-track", { duration: 1.8, autoAlpha: 1, y: 0, scale: 1, filter: "blur(0px)", rotationX: 0, ease: "expo.out" })
-             .to(".text-days", { duration: 1.4, clipPath: "inset(0 0% 0 0)", ease: "power4.inOut" }, "-=1.0");
+      introTl.to(".text-track", {
+              duration: isMobile ? 1.2 : 1.8,
+              autoAlpha: 1,
+              y: 0,
+              scale: 1,
+              filter: "blur(0px)",
+              rotationX: 0,
+              ease: "power3.out",
+              force3D: true,
+            })
+             .to(".text-days", {
+              duration: isMobile ? 1.0 : 1.4,
+              clipPath: "inset(0 0% 0 0)",
+              ease: "power3.inOut",
+            }, "-=0.8");
 
-      const scrollTl = gsap.timeline({ scrollTrigger: { trigger: containerRef.current, start: "top top", end: "+=5000", pin: true, scrub: 1, anticipatePin: 1 }});
-      scrollTl.to([".hero-text-wrapper", ".bg-grid-theme"], { scale: 1.15, filter: "blur(20px)", opacity: 0.2, ease: "power2.inOut", duration: 2 }, 0)
-        .to(".main-card", { y: 0, ease: "power3.inOut", duration: 2 }, 0)
-        .to(".main-card", { width: "100%", height: "100%", borderRadius: "0px", ease: "power3.inOut", duration: 1.5 })
-        .fromTo(".mockup-scroll-wrapper", { y: 300, z: -500, rotationX: 50, rotationY: -30, autoAlpha: 0, scale: 0.6 }, { y: 0, z: 0, rotationX: 0, rotationY: 0, autoAlpha: 1, scale: 1, ease: "expo.out", duration: 2.5 }, "-=0.8")
-        .fromTo(".card-left-text", { x: -50, autoAlpha: 0 }, { x: 0, autoAlpha: 1, ease: "power4.out", duration: 1.5 }, "-=1.5")
-        .fromTo(".card-right-text", { x: 50, autoAlpha: 0, scale: 0.8 }, { x: 0, autoAlpha: 1, scale: 1, ease: "expo.out", duration: 1.5 }, "<")
+      const scrollTl = gsap.timeline({
+        defaults: { ease: "none" },
+        scrollTrigger: {
+          trigger: containerRef.current,
+          start: "top top",
+          end: scrollDistance,
+          pin: true,
+          scrub: scrubValue,
+          anticipatePin: isMobile ? 2 : 1,
+          fastScrollEnd: true,
+          invalidateOnRefresh: true,
+        },
+      });
+
+      scrollTl.to([".hero-text-wrapper", ".bg-grid-theme"], {
+          scale: isMobile ? 1.08 : 1.15,
+          filter: isMobile ? "blur(8px)" : "blur(20px)",
+          opacity: 0.2,
+          duration: 2,
+          force3D: true,
+        }, 0)
+        .to(".main-card", { y: 0, duration: 2, force3D: true }, 0)
+        .to(".main-card", { width: "100%", height: "100%", borderRadius: "0px", duration: isMobile ? 1.2 : 1.5, force3D: true })
+        .fromTo(".mockup-scroll-wrapper", {
+          y: isMobile ? 180 : 300,
+          z: isMobile ? -240 : -500,
+          rotationX: isMobile ? 20 : 50,
+          rotationY: isMobile ? -15 : -30,
+          autoAlpha: 0,
+          scale: isMobile ? 0.82 : 0.6,
+        }, {
+          y: 0,
+          z: 0,
+          rotationX: 0,
+          rotationY: 0,
+          autoAlpha: 1,
+          scale: 1,
+          duration: isMobile ? 1.9 : 2.5,
+          force3D: true,
+        }, "-=0.8")
+        .fromTo(".card-left-text", {
+          x: isMobile ? -28 : -50,
+          autoAlpha: 0,
+        }, {
+          x: 0,
+          autoAlpha: 1,
+          duration: isMobile ? 1.0 : 1.5,
+          force3D: true,
+        }, "-=1.2")
+        .fromTo(".card-right-text", {
+          x: isMobile ? 28 : 50,
+          autoAlpha: 0,
+          scale: 0.9,
+        }, {
+          x: 0,
+          autoAlpha: 1,
+          scale: 1,
+          duration: isMobile ? 1.0 : 1.5,
+          force3D: true,
+        }, "<")
         .to({}, { duration: 2.5 })
         .set(".hero-text-wrapper", { autoAlpha: 0 }).set(".cta-wrapper", { autoAlpha: 1 }).to({}, { duration: 1.5 })
-        .to([".mockup-scroll-wrapper", ".card-left-text", ".card-right-text"], { scale: 0.9, y: -40, z: -200, autoAlpha: 0, ease: "power3.in", duration: 1.2, stagger: 0.05 })
-        .to(".main-card", { width: isMobile ? "92vw" : "85vw", height: isMobile ? "92vh" : "85vh", borderRadius: isMobile ? "32px" : "40px", ease: "expo.inOut", duration: 1.8 }, "pullback") 
-        .to(".cta-wrapper", { scale: 1, filter: "blur(0px)", ease: "expo.inOut", duration: 1.8 }, "pullback")
-        .to(".main-card", { y: -window.innerHeight - 300, ease: "power3.in", duration: 1.5 });
+        .to([".mockup-scroll-wrapper", ".card-left-text", ".card-right-text"], {
+          scale: 0.9,
+          y: -40,
+          z: -200,
+          autoAlpha: 0,
+          duration: 1.2,
+          stagger: 0.05,
+          force3D: true,
+        })
+        .to(".main-card", {
+          width: isMobile ? "92vw" : "85vw",
+          height: isMobile ? "92vh" : "85vh",
+          borderRadius: isMobile ? "32px" : "40px",
+          duration: isMobile ? 1.4 : 1.8,
+          force3D: true,
+        }, "pullback")
+        .to(".cta-wrapper", {
+          scale: 1,
+          filter: "blur(0px)",
+          duration: isMobile ? 1.4 : 1.8,
+          force3D: true,
+        }, "pullback")
+        .to(".main-card", { y: -window.innerHeight - 300, duration: 1.5, force3D: true });
     }, containerRef);
-    return () => ctx.revert();
+
+    return () => {
+      if (isMobile && !prefersReducedMotion) {
+        ScrollTrigger.normalizeScroll(false);
+      }
+      ctx.revert();
+    };
   },[]); 
 
   return (
@@ -112,13 +250,13 @@ export function CinematicHero({
       <div className="bg-grid-theme absolute inset-0 z-0 pointer-events-none opacity-50" aria-hidden="true" />
 
       {/* BACKGROUND LAYER: Hero Texts */}
-      <div className="hero-text-wrapper absolute z-10 flex flex-col items-center justify-center text-center w-screen px-4 will-change-transform transform-style-3d">
+      <div className="hero-text-wrapper gpu-smooth absolute z-10 flex flex-col items-center justify-center text-center w-screen px-4 will-change-transform transform-style-3d">
         <h1 className="text-track gsap-reveal text-3d-matte text-5xl md:text-7xl lg:text-[6rem] font-bold tracking-tight mb-2">{tagline1}</h1>
         <h1 className="text-days gsap-reveal text-silver-matte text-5xl md:text-7xl lg:text-[6rem] font-extrabold tracking-tighter">{tagline2}</h1>
       </div>
 
       {/* BACKGROUND LAYER 2: CTA Action to Ujian App */}
-      <div className="cta-wrapper absolute z-10 flex flex-col items-center justify-center text-center w-screen px-4 gsap-reveal pointer-events-auto will-change-transform">
+      <div className="cta-wrapper gpu-smooth absolute z-10 flex flex-col items-center justify-center text-center w-screen px-4 gsap-reveal pointer-events-auto will-change-transform">
         <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight text-silver-matte">{ctaHeading}</h2>
         <p className="text-slate-400 text-lg md:text-xl mb-12 max-w-xl mx-auto font-light leading-relaxed">{ctaDescription}</p>
         <div className="flex flex-col sm:flex-row gap-6">
@@ -130,7 +268,7 @@ export function CinematicHero({
 
       {/* FOREGROUND LAYER: The Physical Deep Blue Card */}
       <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none" style={{ perspective: "1500px" }}>
-        <div ref={mainCardRef} className="main-card premium-depth-card relative overflow-hidden gsap-reveal flex items-center justify-center pointer-events-auto w-[92vw] md:w-[85vw] h-[92vh] md:h-[85vh] rounded-[32px] md:rounded-[40px]">
+        <div ref={mainCardRef} className="main-card gpu-smooth premium-depth-card relative overflow-hidden gsap-reveal flex items-center justify-center pointer-events-auto w-[92vw] md:w-[85vw] h-[92vh] md:h-[85vh] rounded-[32px] md:rounded-[40px]">
           <div className="card-sheen" aria-hidden="true" />
           <div className="relative w-full h-full max-w-7xl mx-auto px-4 lg:px-12 flex flex-col justify-evenly lg:grid lg:grid-cols-3 items-center lg:gap-8 z-10 py-6 lg:py-0">
             
@@ -138,7 +276,7 @@ export function CinematicHero({
               <h2 className="text-6xl md:text-[6rem] lg:text-[8rem] font-black uppercase tracking-tighter text-card-silver-matte lg:mt-0">{brandName}</h2>
             </div>
 
-            <div className="mockup-scroll-wrapper order-2 lg:order-2 relative w-full h-[380px] lg:h-[600px] flex items-center justify-center z-10" style={{ perspective: "1000px" }}>
+            <div className="mockup-scroll-wrapper gpu-smooth order-2 lg:order-2 relative w-full h-[380px] lg:h-[600px] flex items-center justify-center z-10" style={{ perspective: "1000px" }}>
               <div className="relative w-full h-full flex items-center justify-center transform scale-[0.65] md:scale-[0.85] lg:scale-100">
                 
                 {/* The iPhone Bezel */}
@@ -157,7 +295,7 @@ export function CinematicHero({
                     <div className="absolute top-[5px] left-1/2 -translate-x-1/2 w-[100px] h-[28px] bg-black rounded-full z-[100]"></div>
 
                     {/* App Content */}
-                    <div className="flex-1 overflow-y-auto px-4 pt-14 pb-20 relative z-20">
+                    <div className="mockup-content-scroll flex-1 overflow-y-auto px-4 pt-14 pb-20 relative z-20">
                       {/* Top Header */}
                       <div className="flex items-start justify-between mb-6">
                         <div>
