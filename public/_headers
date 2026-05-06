@@ -21,4 +21,4 @@
   Content-Type: application/json
 
 /*.wasm
-  Content-type: application/wasm
+  Content-Type: application/wasm
